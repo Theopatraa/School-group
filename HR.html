@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/Website/styles.css">
+    <title>HR Page</title>
+</head>
+<body>
+    <h2>HR Dashboard</h2>
+    <div class="container">
+        <div class="sidebar">
+            <div class="dropdown">
+                <label for="disputes">Disputes</label>
+                <select id="disputes" onchange="loadData('disputes')">
+                    <option value="">Select Disputes</option>
+                    <!-- This is where we will find how many disputes are in total in the company -->
+                </select>
+            </div>
+            <div class="dropdown">
+                <label for="disciplinary">Disciplinary Records</label>
+                <select id="disciplinary" onchange="loadData('disciplinary')">
+                    <option value="">Select Disciplinary Records</option>
+                    <!-- This is where we will find records of basically a department, site , group, or employee we will insert a
+                     search option so that we can either find them either based on department number or employee number or payroll 
+                     number, there'll be options -->
+                </select>
+            </div>
+            <div class="dropdown">
+                <label for="cvs">CVs</label>
+                <select id="cvs" onchange="loadData('cvs')">
+                    <option value="">Select CVs</option>
+                    <!-- Thus is where the CV will be sent from being received by the database and being sent to the algorithm
+                     that will shorten and find the most compatible-->
+                </select>
+            </div>
+            <div class="dropdown">
+                <label for="attendance">Time and Attendance</label>
+                <select id="attendance" onchange="loadData('attendance')">
+                    <option value="">Select Time and Attendance</option>
+                    <!-- Time and attendance is used to check on if the employee has been actually going to work and arriving on time
+                     as this will be a used as evidence in instances when they are going to want records of this -->
+                </select>
+            </div>
+            <button onclick="showAddForm()">Add Record</button>
+            <button onclick="showUploadForm()">Upload File</button>
+        </div>
+        <div class="content">
+            <div class="search-form">
+                <h3>Search Files:</h3>
+                <form action="/search" method="GET">
+                    <label for="keyword">Keyword:</label>
+                    <input type="text" id="keyword" name="keyword">
+                    <button type="submit">Search</button>
+                </form>
+            </div>
+            <div id="data-container">
+                <!-- This is where data will be taken from the database and shown on the screen -->
+            </div>
+            <div id="add-form">
+                <h3>Add New Record</h3>
+                <form id="addRecordForm" method="POST">
+                    <input type="hidden" name="type" id="record-type">
+                    <label for="data">Details:</label>
+                    <input type="text" id="data" name="data" required><br>
+                    <button type="submit">Add Record</button>
+                </form>
+            </div>
+            <div id="upload-form">
+                <h3>Upload File</h3>
+                <form action="/upload" method="POST" enctype="multipart/form-data">
+                    <label for="file">Upload File:</label>
+                    <input type="file" id="file" name="file" required><br>
+                    <button type="submit">Upload</button>
+                </form>
+            </div>
+            <h3>Uploaded Files:</h3>
+            <ul id="file-list">
+                <!-- This is where files will be inserted from us, this will be basically how we send reports and stuff into the 
+                 system -->
+            </ul>
+        </div>
+    </div>
+    <script>
+        function loadData(type) {
+            fetch(`/hr/${type}`)
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('data-container');
+                    container.innerHTML = `
+                        <h3>${type.charAt(0).toUpperCase() + type.slice(1)}</h3>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    ${type === 'disputes' || type === 'disciplinary' ? `<th>ID</th><th>Details</th>` : ''}
+                                    ${type === 'cvs' ? `<th>ID</th><th>Filename</th>` : ''}
+                                    ${type === 'attendance' ? `<th>ID</th><th>Date</th><th>Status</th>` : ''}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(record => `
+                                    <tr>
+                                        ${type === 'disputes' || type === 'disciplinary' ? `<td>${record.id}</td><td>${record.details}</td>` : ''}
+                                        ${type === 'cvs' ? `<td>${record.id}</td><td><a href="/download/${record.filename}">${record.filename}</a></td>` : ''}
+                                        ${type === 'attendance' ? `<td>${record.id}</td><td>${record.date}</td><td>${record.status}</td>` : ''}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                });
+        }
+
+        function showAddForm() {
+            document.getElementById('add-form').style.display = 'block';
+            document.getElementById('upload-form').style.display = 'none';
+            const form = document.getElementById('addRecordForm');
+            form.onsubmit = function(event) {
+                event.preventDefault();
+                const type = document.getElementById('record-type').value;
+                const data = new FormData(form);
+
+                fetch(`/hr/add`, {
+                    method: 'POST',
+                    body: data
+                }).then(response => response.json())
+                  .then(() => {
+                      loadData(type); // This will refresh the page
+                      document.getElementById('add-form').style.display = 'none';
+                  });
+            };
+        }
+
+        function showUploadForm() {
+            document.getElementById('upload-form').style.display = 'block';
+            document.getElementById('add-form').style.display = 'none';
+        }
+
+        // This will load a list of uploaded files, we will also have to include a search point here
+        function loadFiles() {
+            fetch('/files')
+                .then(response => response.json())
+                .then(files => {
+                    const fileList = document.getElementById('file-list');
+                    fileList.innerHTML = files.map(file => `
+                        <li><a href="/download/${file.filename}">${file.filename}</a></li>
+                    `).join('');
+                });
+        }
+
+        // Load files on page load
+        window.onload = loadFiles;
+    </script>
+</body>
+</html>
